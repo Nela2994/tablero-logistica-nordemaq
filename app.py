@@ -63,7 +63,7 @@ try:
     col_asignacion = col_asignacion[0] if col_asignacion else df.columns[-2]
 
     col_preentrega = [c for c in df.columns if "Pre" in c or "PRE" in c or "Entrega" in c]
-    col_preentrega = col_preentrega[0] if col_preentrega me else df.columns[-1]
+    col_preentrega = col_preentrega[0] if col_preentrega else df.columns[-1]
 
     # --- LÓGICA BASADA EN FECHAS ---
     cond_no_finalizada = ~df[col_estado].astype(str).str.lower().str.contains("8.7|finaliz|cerrad|complet", na=False)
