@@ -24,8 +24,12 @@ def load_data():
         rows = raw_data[1:]
         return pd.DataFrame(rows, columns=headers_row)
     except Exception:
-        # Si la respuesta es texto plano o CSV
-        return pd.read_csv(io.StringIO(res.text))
+        # Manejo de líneas con cantidad variable de columnas o comas internas
+        return pd.read_csv(
+            io.StringIO(res.text),
+            on_bad_lines='skip',
+            engine='python'
+        )
 
 try:
     df = load_data()
