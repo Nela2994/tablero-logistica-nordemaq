@@ -7,7 +7,6 @@ st.set_page_config(page_title="Tablero de Logística Nordemaq", layout="wide")
 
 st.title("🚛 Tablero de Control de Logística y Pre-entrega")
 
-# URL de la API de Apps Script
 API_URL = "https://script.google.com/macros/s/AKfycbzX0ZazhJExig84VGrg0VVEDp4KkM4njfy9P9KiSYk8IOg5-HxWRoen1SQN3L1XJsdt1g/exec"
 
 @st.cache_data(ttl=60)
@@ -19,16 +18,12 @@ def load_data():
     except Exception:
         data_json = json.loads(res.text)
 
-    # Convertir a DataFrame la matriz de datos completa
     df_raw = pd.DataFrame(data_json)
     
-    # En la planilla, la Fila 2 (índice 1) contiene los nombres reales de las columnas
+    # En la pestaña Operaciones, la Fila 2 (índice 1) contiene los encabezados reales
     header_row_idx = 1
-    
-    # Obtener nombres de columnas desde la Fila 2
     raw_headers = df_raw.iloc[header_row_idx].astype(str)
     
-    # Asegurar nombres de columnas únicos para evitar duplicados
     new_cols = []
     counts = {}
     for idx, col in enumerate(raw_headers):
@@ -40,11 +35,8 @@ def load_data():
             counts[col_name] = 0
             new_cols.append(col_name)
             
-    # Los datos de las unidades comienzan después de la Fila 2 (índice 2 en adelante)
     df = df_raw.iloc[header_row_idx + 1:].copy()
     df.columns = new_cols
-    
-    # Limpiar columnas vacías
     df = df.dropna(how='all', axis=1)
     
     return df
@@ -52,11 +44,11 @@ def load_data():
 try:
     df = load_data()
 
-    # Métricas principales
+    # Métricas
     col1, col2 = st.columns(2)
-    col1.metric("Total de Unidades / Registros", len(df))
+    col1.metric("Total de Unidades / Operaciones", len(df))
 
-    # Buscador en tiempo real
+    # Buscador
     st.sidebar.header("🔍 Buscador de Unidades")
     busqueda = st.sidebar.text_input("Ingresa Chasis, Cliente, Modelo o Ubicación:")
 
@@ -67,4 +59,4 @@ try:
     st.dataframe(df, use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error al procesar la información de la planilla: {e}")
+    st.error(f"Error al procesar la información: {e}")
