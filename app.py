@@ -8,7 +8,7 @@ st.title("🚛 Tablero de Control de Logística y Pre-entrega")
 
 # Cargar la base de datos desde Google Sheets (publicada como CSV)
 # Reemplaza esta URL con el enlace de exportación CSV de tu Google Sheet
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1Q9vXFyG-o04uWiQoxslutAMGzg4wlzfMDrMM6INoQ54/export?format=csv"
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1FQ8MWyE6oiRwmL9bsyHRcYYM1hE0VbiRC6QEQHCuOo6/export?format=csv"
 
 @st.cache_data(ttl=60)
 def load_data():
