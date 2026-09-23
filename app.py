@@ -19,21 +19,20 @@ def load_data():
     except Exception:
         data_json = json.loads(res.text)
 
-    # Si la primera fila tiene títulos duplicados o celdas vacías combinadas,
-    # armamos la tabla usando la primera fila como datos o renombrando duplicados
-    rows = data_json
+    # Convertir a DataFrame la matriz de datos completa
+    df_raw = pd.DataFrame(data_json)
     
-    # Crear DataFrame sin especificar columnas para manejar nombres duplicados
-    df = pd.DataFrame(rows)
+    # En la planilla, la Fila 2 (índice 1) contiene los nombres reales de las columnas
+    header_row_idx = 1
     
-    # Usar la primera fila como encabezado haciendo únicos los nombres duplicados
-    header = df.iloc[0].astype(str)
+    # Obtener nombres de columnas desde la Fila 2
+    raw_headers = df_raw.iloc[header_row_idx].astype(str)
     
-    # Manejar encabezados duplicados agregando sufijos
+    # Asegurar nombres de columnas únicos para evitar duplicados
     new_cols = []
     counts = {}
-    for col in header:
-        col_name = col.strip() if col.strip() != "" else "Columna"
+    for idx, col in enumerate(raw_headers):
+        col_name = col.strip() if col.strip() != "" and col.strip() != "nan" else f"Columna_{idx+1}"
         if col_name in counts:
             counts[col_name] += 1
             new_cols.append(f"{col_name}_{counts[col_name]}")
@@ -41,10 +40,11 @@ def load_data():
             counts[col_name] = 0
             new_cols.append(col_name)
             
-    df = df[1:]
+    # Los datos de las unidades comienzan después de la Fila 2 (índice 2 en adelante)
+    df = df_raw.iloc[header_row_idx + 1:].copy()
     df.columns = new_cols
     
-    # Eliminar columnas completamente vacías
+    # Limpiar columnas vacías
     df = df.dropna(how='all', axis=1)
     
     return df
@@ -54,7 +54,7 @@ try:
 
     # Métricas principales
     col1, col2 = st.columns(2)
-    col1.metric("Total de Registros Cargados", len(df))
+    col1.metric("Total de Unidades / Registros", len(df))
 
     # Buscador en tiempo real
     st.sidebar.header("🔍 Buscador de Unidades")
