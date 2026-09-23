@@ -44,6 +44,12 @@ def load_data():
     return df
 
 try:
+    # BOTÓN DE REFRESCADO EN TIEMPO REAL
+    st.sidebar.header("🔄 Actualización")
+    if st.sidebar.button("🔄 Actualizar Datos Ahora", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
     df = load_data()
 
     # Detección de columnas clave
@@ -53,34 +59,27 @@ try:
     col_cliente = [c for c in df.columns if "Cliente" in c or "CLIENTE" in c]
     col_cliente = col_cliente[0] if col_cliente else df.columns[3]
     
-    # Columna AY (Asignación) y AZ (Pre-entrega)
     col_asignacion = [c for c in df.columns if "Asignaci" in c or "ASIGNACI" in c]
     col_asignacion = col_asignacion[0] if col_asignacion else df.columns[-2]
 
     col_preentrega = [c for c in df.columns if "Pre" in c or "PRE" in c or "Entrega" in c]
-    col_preentrega = col_preentrega[0] if col_preentrega else df.columns[-1]
+    col_preentrega = col_preentrega[0] if col_preentrega me else df.columns[-1]
 
     # --- LÓGICA BASADA EN FECHAS ---
-    
-    # Excluir operaciones ya finalizadas/cerradas
     cond_no_finalizada = ~df[col_estado].astype(str).str.lower().str.contains("8.7|finaliz|cerrad|complet", na=False)
-    
-    # Tiene Cliente cargado
     cond_tiene_cliente = df[col_cliente].astype(str).str.strip().ne("") & df[col_cliente].astype(str).str.strip().ne("-") & df[col_cliente].astype(str).str.strip().ne("nan")
     
-    # Asignación SIN FECHA (vacía, con guion o sin datos) -> Alerta Roja
     val_asig = df[col_asignacion].astype(str).str.strip().str.lower()
     cond_asig_sin_fecha = val_asig.eq("") | val_asig.eq("-") | val_asig.eq("nan") | val_asig.str.contains("pend|sin", na=False)
     
     df_sin_asignar = df[cond_no_finalizada & cond_tiene_cliente & cond_asig_sin_fecha]
 
-    # Pre-entrega CON FECHA cargada (contiene números o barras '/' '-') -> Alerta Verde
     val_pre = df[col_preentrega].astype(str).str.strip().str.lower()
     cond_pre_con_fecha = val_pre.ne("") & val_pre.ne("-") & val_pre.ne("nan") & ~val_pre.str.contains("pend|no|sin", na=False)
     
     df_preentrega_lista = df[cond_no_finalizada & cond_pre_con_fecha]
 
-    # --- INDICADORES EN PANTALLA ---
+    # --- INDICADORES ---
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Registro Histórico", len(df))
     col2.metric("⚠️ Sin Asignar (Sin fecha en Col. AY)", len(df_sin_asignar))
@@ -88,7 +87,7 @@ try:
 
     st.markdown("---")
 
-    # --- ALERTAS DEDICADAS ---
+    # --- ALERTAS ---
     if len(df_sin_asignar) > 0:
         st.error(f"🚨 **¡ATENCIÓN! HAY {len(df_sin_asignar)} UNIDADES CON CLIENTE SIN FECHA DE ASIGNACIÓN**")
         with st.expander("👉 Ver lista de unidades para coordinar asignación de transporte", expanded=True):
@@ -103,7 +102,7 @@ try:
 
     st.markdown("---")
 
-    # --- VISTA DE TABLA CON FILTROS ---
+    # --- FILTROS Y BÚSQUEDA ---
     st.sidebar.header("🔍 Filtros de Gestión")
     modo_vista = st.sidebar.radio("Ver en tabla:", ["Todas las Unidades", "Solo Pendientes de Asignar", "Solo Listos para Salida"])
 
