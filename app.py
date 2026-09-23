@@ -6,25 +6,30 @@ st.set_page_config(page_title="Tablero de Logística Nordemaq", layout="wide")
 
 st.title("🚛 Tablero de Control de Logística y Pre-entrega")
 
-# URL de Apps Script generada
+# URL de la API de Apps Script de tu jefe
 API_URL = "https://script.google.com/macros/s/AKfycbzX0ZazhJExig84VGrg0VVEDp4KkM4njfy9P9KiSYk8IOg5-HxWRoen1SQN3L1XJsdt1g/exec"
 
 @st.cache_data(ttl=60)
 def load_data():
-    res = requests.get(API_URL)
+    # allow_redirects=True le permite a Python seguir la redirección de Google Apps Script
+    res = requests.get(API_URL, allow_redirects=True)
     raw_data = res.json()
+    
+    # Encabezados en la primera fila y datos en las siguientes
     headers = raw_data[0]
     rows = raw_data[1:]
-    return pd.DataFrame(rows, columns=headers)
+    
+    df = pd.DataFrame(rows, columns=headers)
+    return df
 
 try:
     df = load_data()
 
-    # Métricas superiores
+    # Indicadores superiores
     col1, col2 = st.columns(2)
     col1.metric("Total de Registros Cargados", len(df))
 
-    # Buscador dinámico lateral
+    # Buscador en la barra lateral
     st.sidebar.header("🔍 Buscador de Unidades")
     busqueda = st.sidebar.text_input("Ingresa Chasis, Cliente, Modelo o Ubicación:")
 
@@ -35,4 +40,4 @@ try:
     st.dataframe(df, use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error al conectar con la API: {e}")
+    st.error(f"Error al procesar la información: {e}")
