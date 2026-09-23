@@ -1,32 +1,28 @@
 import streamlit as st
 import pandas as pd
-import requests
-import io
 
 st.set_page_config(page_title="Tablero de Logística Nordemaq", layout="wide")
 
 st.title("🚛 Tablero de Control de Logística y Pre-entrega")
 
-# Enlace publicado directamente desde la web
-SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8uCPac3EOcielt-jqFbSPIrFdCCZcLGQ63fiXL2zxJ44sGHJtui42Vy_9qkOt0JbfySlRwlQWxoMg/pub?output=csv"
+# Leemos la versión HTML publicada que NO requiere autenticación corporativa
+PUBHTML_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8uCPac3EOcielt-jqFbSPIrFdCCZcLGQ63fiXL2zxJ44sGHJtui42Vy_9qkOt0JbfySlRwlQWxoMg/pubhtml"
 
 @st.cache_data(ttl=60)
 def load_data():
-    headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(SHEET_URL, headers=headers)
-    if response.status_code == 200:
-        return pd.read_csv(io.StringIO(response.text))
-    else:
-        # Intento secundario con enlace alternativo gviz
-        alt_url = "https://docs.google.com/spreadsheets/d/1FQ8MwYE6oiRwmL9bsyHRcYYM1hE0VbiRC6QEQHCuOo6o/gviz/tq?tqx=out:csv"
-        return pd.read_csv(alt_url)
+    # Lee directamente la tabla HTML de Google Sheets
+    tables = pd.read_html(PUBHTML_URL, header=1)
+    df = tables[0]
+    # Limpiamos columnas vacías o no deseadas
+    df = df.dropna(how="all", axis=1)
+    return df
 
 try:
     df = load_data()
 
-    # Métricas y resumen superior
+    # Métricas principales
     col1, col2 = st.columns(2)
-    col1.metric("Total de Unidades / Registros", len(df))
+    col1.metric("Total de Registros Cargados", len(df))
 
     # Buscador en la barra lateral
     st.sidebar.header("🔍 Buscador de Unidades")
