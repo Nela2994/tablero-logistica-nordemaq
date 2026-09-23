@@ -1,30 +1,30 @@
 import streamlit as st
 import pandas as pd
+import requests
 
 st.set_page_config(page_title="Tablero de Logística Nordemaq", layout="wide")
 
 st.title("🚛 Tablero de Control de Logística y Pre-entrega")
 
-# Leemos la versión HTML publicada que NO requiere autenticación corporativa
-PUBHTML_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8uCPac3EOcielt-jqFbSPIrFdCCZcLGQ63fiXL2zxJ44sGHJtui42Vy_9qkOt0JbfySlRwlQWxoMg/pubhtml"
+# URL de Apps Script generada
+API_URL = "https://script.google.com/macros/s/AKfycbzX0ZazhJExig84VGrg0VVEDp4KkM4njfy9P9KiSYk8IOg5-HxWRoen1SQN3L1XJsdt1g/exec"
 
 @st.cache_data(ttl=60)
 def load_data():
-    # Lee directamente la tabla HTML de Google Sheets
-    tables = pd.read_html(PUBHTML_URL, header=1)
-    df = tables[0]
-    # Limpiamos columnas vacías o no deseadas
-    df = df.dropna(how="all", axis=1)
-    return df
+    res = requests.get(API_URL)
+    raw_data = res.json()
+    headers = raw_data[0]
+    rows = raw_data[1:]
+    return pd.DataFrame(rows, columns=headers)
 
 try:
     df = load_data()
 
-    # Métricas principales
+    # Métricas superiores
     col1, col2 = st.columns(2)
     col1.metric("Total de Registros Cargados", len(df))
 
-    # Buscador en la barra lateral
+    # Buscador dinámico lateral
     st.sidebar.header("🔍 Buscador de Unidades")
     busqueda = st.sidebar.text_input("Ingresa Chasis, Cliente, Modelo o Ubicación:")
 
@@ -35,4 +35,4 @@ try:
     st.dataframe(df, use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error al conectar con la planilla: {e}")
+    st.error(f"Error al conectar con la API: {e}")
