@@ -9,7 +9,7 @@ st.title("🚛 Tablero de Control y Alertas Logísticas")
 
 API_URL = "https://script.google.com/macros/s/AKfycbzX0ZazhJExig84VGrg0VVEDp4KkM4njfy9P9KiSYk8IOg5-HxWRoen1SQN3L1XJsdt1g/exec"
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=20)
 def load_data():
     res = requests.get(API_URL, allow_redirects=True)
     try:
@@ -46,53 +46,64 @@ def load_data():
 try:
     df = load_data()
 
-    # Identificar nombres de columnas clave (o asignar por posición de índice si difieren)
-    col_cliente = [c for c in df.columns if "Cliente" in c]
+    # Detección de columnas clave
+    col_estado = [c for c in df.columns if "Estado" in c or "ESTADO" in c]
+    col_estado = col_estado[0] if col_estado else df.columns[4]
+
+    col_cliente = [c for c in df.columns if "Cliente" in c or "CLIENTE" in c]
     col_cliente = col_cliente[0] if col_cliente else df.columns[3]
     
-    # Asignaciones (Columna AY aprox.) y Pre-entrega (Columna AZ aprox.)
-    # Se busca por nombre parcial o se toma la última/penúltima columna
+    # Columna AY (Asignación) y AZ (Pre-entrega)
     col_asignacion = [c for c in df.columns if "Asignaci" in c or "ASIGNACI" in c]
     col_asignacion = col_asignacion[0] if col_asignacion else df.columns[-2]
 
     col_preentrega = [c for c in df.columns if "Pre" in c or "PRE" in c or "Entrega" in c]
     col_preentrega = col_preentrega[0] if col_preentrega else df.columns[-1]
 
-    # --- LÓGICA DE ALERTAS ---
+    # --- LÓGICA BASADA EN FECHAS ---
     
-    # 1. Alerta Clientes Nuevos Sin Asignar
-    # Tiene Cliente registrado pero la Asignación está vacía, guion o contiene 'pend'
-    cond_cliente_existe = df[col_cliente].astype(str).str.strip().ne("") & df[col_cliente].astype(str).str.strip().ne("-") & df[col_cliente].astype(str).str.strip().ne("nan")
-    cond_sin_asignar = df[col_asignacion].astype(str).str.strip().eq("") | df[col_asignacion].astype(str).str.strip().eq("-") | df[col_asignacion].astype(str).str.lower().str.contains("pend|a asign|sin", na=False)
+    # Excluir operaciones ya finalizadas/cerradas
+    cond_no_finalizada = ~df[col_estado].astype(str).str.lower().str.contains("8.7|finaliz|cerrad|complet", na=False)
     
-    df_sin_asignar = df[cond_cliente_existe & cond_sin_asignar]
+    # Tiene Cliente cargado
+    cond_tiene_cliente = df[col_cliente].astype(str).str.strip().ne("") & df[col_cliente].astype(str).str.strip().ne("-") & df[col_cliente].astype(str).str.strip().ne("nan")
+    
+    # Asignación SIN FECHA (vacía, con guion o sin datos) -> Alerta Roja
+    val_asig = df[col_asignacion].astype(str).str.strip().str.lower()
+    cond_asig_sin_fecha = val_asig.eq("") | val_asig.eq("-") | val_asig.eq("nan") | val_asig.str.contains("pend|sin", na=False)
+    
+    df_sin_asignar = df[cond_no_finalizada & cond_tiene_cliente & cond_asig_sin_fecha]
 
-    # 2. Alerta Pre-entregas Listas para Logística
-    cond_preentrega_lista = df[col_preentrega].astype(str).str.lower().str.contains("finaliz|list|ok|terminad|complet", na=False)
-    df_preentrega_lista = df[cond_preentrega_lista]
+    # Pre-entrega CON FECHA cargada (contiene números o barras '/' '-') -> Alerta Verde
+    val_pre = df[col_preentrega].astype(str).str.strip().str.lower()
+    cond_pre_con_fecha = val_pre.ne("") & val_pre.ne("-") & val_pre.ne("nan") & ~val_pre.str.contains("pend|no|sin", na=False)
+    
+    df_preentrega_lista = df[cond_no_finalizada & cond_pre_con_fecha]
 
-    # --- TARJETAS SUPERIORES (KPIs) ---
+    # --- INDICADORES EN PANTALLA ---
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total de Registros Cargados", len(df))
-    col2.metric("⚠️ Novedades: Clientes Sin Asignar", len(df_sin_asignar))
-    col3.metric("✅ Listos para Salida / Logística", len(df_preentrega_lista))
+    col1.metric("Total Registro Histórico", len(df))
+    col2.metric("⚠️ Sin Asignar (Sin fecha en Col. AY)", len(df_sin_asignar))
+    col3.metric("✅ Pre-entrega Lista (Con fecha en Col. AZ)", len(df_preentrega_lista))
 
     st.markdown("---")
 
-    # --- SECCIÓN DE ALERTAS DESTACADAS ---
+    # --- ALERTAS DEDICADAS ---
     if len(df_sin_asignar) > 0:
-        st.error(f"🚨 **¡ATENCIÓN! HAY {len(df_sin_asignar)} UNIDADES CON CLIENTE NUEVO PENDIENTES DE ASIGNACIÓN**")
-        with st.expander("👉 Haz clic aquí para ver la lista de equipos a coordinar urgente", expanded=True):
+        st.error(f"🚨 **¡ATENCIÓN! HAY {len(df_sin_asignar)} UNIDADES CON CLIENTE SIN FECHA DE ASIGNACIÓN**")
+        with st.expander("👉 Ver lista de unidades para coordinar asignación de transporte", expanded=True):
             st.dataframe(df_sin_asignar, use_container_width=True)
+    else:
+        st.info("👍 Todas las unidades activas con cliente ya cuentan con fecha de asignación.")
 
     if len(df_preentrega_lista) > 0:
-        st.success(f"🎉 **¡PRE-ENTREGA FINALIZADA! HAY {len(df_preentrega_lista)} EQUIPOS LISTOS PARA PLANIFICAR LOGÍSTICA**")
-        with st.expander("👉 Haz clic aquí para ver los equipos listos para coordinar transporte/flete", expanded=False):
+        st.success(f"🎉 **¡PRE-ENTREGA FINALIZADA! HAY {len(df_preentrega_lista)} EQUIPOS CON FECHA DE PRE-ENTREGA LISTOS PARA SALIDA**")
+        with st.expander("👉 Ver equipos listos para coordinar logística", expanded=True):
             st.dataframe(df_preentrega_lista, use_container_width=True)
 
     st.markdown("---")
 
-    # --- FILTROS Y TABLA GENERAL ---
+    # --- VISTA DE TABLA CON FILTROS ---
     st.sidebar.header("🔍 Filtros de Gestión")
     modo_vista = st.sidebar.radio("Ver en tabla:", ["Todas las Unidades", "Solo Pendientes de Asignar", "Solo Listos para Salida"])
 
@@ -108,7 +119,7 @@ try:
     if busqueda:
         df_mostrar = df_mostrar[df_mostrar.astype(str).apply(lambda row: row.str.contains(busqueda, case=False).any(), axis=1)]
 
-    st.subheader(f"📋 Vista General ({modo_vista})")
+    st.subheader(f"📋 Lista de Unidades ({modo_vista})")
     st.dataframe(df_mostrar, use_container_width=True)
 
 except Exception as e:
