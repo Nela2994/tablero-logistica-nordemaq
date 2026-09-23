@@ -5,20 +5,20 @@ st.set_page_config(page_title="Tablero de Logística Nordemaq", layout="wide")
 
 st.title("🚛 Tablero de Control de Logística y Pre-entrega")
 
-# Enlace CSV publicado desde Google Sheets
-SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8uCPac3EOcielt-jqFbSPIrFdCCZcLGQ63fiXL2zxJ44sGHJtui42Vy_9qkOt0JbfySlRwlQWxoMg/pub?output=csv"
+# ID exacto de tu planilla publicado vía Google Visualization API
+SHEET_ID = "1FQ8MWyE6oiRwmL9bsyHRcYYM1hE0VbiRC6QEQHCuOo6"
+SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
 
 @st.cache_data(ttl=60)
 def load_data():
-    # Cargar datos asegurando lectura correcta de encabezados
     return pd.read_csv(SHEET_URL)
 
 try:
     df = load_data()
 
-    # Métricas principales
+    # Métricas superiores
     col1, col2 = st.columns(2)
-    col1.metric("Total de Registros", len(df))
+    col1.metric("Total de Registros Cargados", len(df))
 
     # Buscador en tiempo real
     st.sidebar.header("🔍 Buscador de Unidades")
@@ -31,4 +31,4 @@ try:
     st.dataframe(df, use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error al conectar con la planilla: {e}")
+    st.error(f"Error de conexión: {e}")
