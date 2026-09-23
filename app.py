@@ -20,7 +20,7 @@ def load_data():
 
     df_raw = pd.DataFrame(data_json)
     
-    # En la pestaña Operaciones, la Fila 2 (índice 1) contiene los encabezados reales
+    # Encabezados reales en la Fila 2 (índice 1)
     header_row_idx = 1
     raw_headers = df_raw.iloc[header_row_idx].astype(str)
     
@@ -39,16 +39,20 @@ def load_data():
     df.columns = new_cols
     df = df.dropna(how='all', axis=1)
     
+    # Resetear el índice para que empiece en 1, 2, 3...
+    df.reset_index(drop=True, inplace=True)
+    df.index = df.index + 1
+    
     return df
 
 try:
     df = load_data()
 
-    # Métricas
+    # Métricas principales
     col1, col2 = st.columns(2)
     col1.metric("Total de Unidades / Operaciones", len(df))
 
-    # Buscador
+    # Buscador en tiempo real en la barra lateral
     st.sidebar.header("🔍 Buscador de Unidades")
     busqueda = st.sidebar.text_input("Ingresa Chasis, Cliente, Modelo o Ubicación:")
 
@@ -59,4 +63,4 @@ try:
     st.dataframe(df, use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error al procesar la información: {e}")
+    st.error(f"Error al procesar la información de la planilla: {e}")
